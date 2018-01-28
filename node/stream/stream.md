@@ -1,3 +1,8 @@
+### refer
+https://github.com/ogilhinn/node-abc/blob/master/lesson5/README.md
+http://nodejs.cn/api/stream.html
+https://segmentfault.com/a/1190000000519006
+
 ###  概念
 nodejs提供了很多种流对象，例如: http请求,process.stdout都是流的实例。流是可读，可写的或者可读写的。所有的流都是EventEmitter的实例
 
