@@ -65,3 +65,39 @@ fs.createReadStream('/README.md')
   .pipe(fs.createWriteStream('README.md.gz'))
 console.log('压缩完成');
 ```
+
+### 文件复制
+1. 简单实现
+```
+  const source = fs.readFileSync('/path/to/source', {encoding: 'utf8'});
+  fs.writeFileSync('/path/to/dest', source);
+```
+这种方式是把文件内容全部读入内存，然后再写入文件,对于小型的文本文件，没有太多问题。但是对于体积较大的二进制文件,比如音频，视频文件。则使用这种方法容易使得内存“爆仓”。理想的方式应该是读一部分，写一部分。不管文件多大，只要时间允许，总会处理完成。
+
+2. 使用Stream方式
+```
+const fs = require('fs');
+const readStream = fs.createReadStream('/path/to/source');
+const writeStream = fs.createWriteStream('/path/to/dest');
+readStream.on('data', chunk => writeStream.write(chunk)); // 有数据流出时,写入数据
+readStream.on('end', writeStream.end()); // 没有数据时, 关闭数据流
+```
+上面写法有点问题，如果写入速度跟不上读取速度，有可能导致数据丢失。正常情况应该是：写完一段，再读取下一段。如果没有写完。就让读取流暂停，等写完再继续。修改为:
+```
+const fs = require('fs');
+const readStream = fs.createReadStream('./compress.js');
+const writeStream = fs.createWriteStream('./dest.js');
+readStream.on('data', chunk => {
+  if(writeStream.write(chunk) === false) {
+    readStream.pause();
+  }
+});
+
+writeStream.on('drain', () => readStream.resume());
+readStream.on('end', () => writeStream.end());
+```
+或者直接使用pipe
+```
+fs.createReadStream('/path/source').pipe(fs.createWriteStream('/path/dest');
+```
+
