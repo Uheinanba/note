@@ -1,3 +1,5 @@
+// http://www.redux.org.cn/docs/FAQ.html
+// http://cn.redux.js.org/docs/recipes/reducers/BasicReducerStructure.html
 ### createStore
 ```
 createStore(reducer, initState)
