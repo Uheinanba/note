@@ -1,5 +1,6 @@
 // http://www.redux.org.cn/docs/FAQ.html
 // http://cn.redux.js.org/docs/recipes/reducers/BasicReducerStructure.html
+// https://egghead.io/browse/frameworks/react
 ### createStore
 ```
 createStore(reducer, initState)
