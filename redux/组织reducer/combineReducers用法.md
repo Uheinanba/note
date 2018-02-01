@@ -1,0 +1,8 @@
+### 核心概念
+分拆多个reducer,拆分之后的reducer都是相同的结构,而且每个函数独立负责管理该特定切片state的更新。多个拆分之后的reducer可以响应一个action,在需要的情况下独立的更新它们自己的切片state。最后组合成新的state。
+
+redux 提供了combineReducers来实现这个模式。这是一个高阶Reducer的示例，接收一个拆分后的reducer函数组成的对象，返回一个新的reducer函数。
+
+1.  不同的reducers至今共享数据
+如果sliceReducerA 为了处理特殊的action正好需要来自sliceReducerB的部分state的数据。使用combinedReducer无法解决。 可以通过把所需数据当额外参数形式传递给自定义函数。
+2. 
