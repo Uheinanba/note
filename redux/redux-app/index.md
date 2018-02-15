@@ -1,4 +1,5 @@
 ## egghead.io  redux 视频(by Dan Abramov)
+// https://www.youtube.com/watch?v=76FRrbY18Bs&index=8&list=PLb0IAmt7-GS3fZ46IGFirdqKTIxlws7e0
 
 1. 简化箭头函数
 ```
