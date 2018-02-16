@@ -15,13 +15,33 @@ https://segmentfault.com/a/1190000005004946
 1. 操作系统的进程
 操作系统的进程是服务端一个基础的概念，进程是一个应用程序的实例，同一个应用程序可以起多个实例(进程)。并且进程是一个系统资源的集合，包括内存，cpu等。同是进程也是系统各个资源使用的标识。
 >  操作系统为每个进程都划分了单独的虚拟内存空间，以避免跨进程的内存注入问题。
-2. Node的Process对象
+2. Node的Process对象(代表当前的进程对象)
 Node的Process对象是一堆信息与操作的集合。由于process很多功能是在C++中binding的原因,process上混合了很多功能
-* 进程基础信息
-* 进程usage
-* 进程级事件
-* 系统账户信息
-* 环境变量
-* 信号收发
-* 三个标准流
-* Node.js 依赖模块/版本信息
+* process.argv
+```
+[ '/Users/yuankun/.nvm/versions/node/v8.0.0/bin/node',
+  '/Users/yuankun/heimanba/github/note/node/code/process/parent.js',
+  '--parms' ]
+```
+* process.stdout(stdin);
+- console.log 等于:
+console.log === process.stdout.write
+- 将当前文件打印到屏幕上:
+fs.createReadStream(__filename).pipe(process.stdout);
+
+
+### child_proces
+
+```
+if (process.argv[2] === "child") {
+  console.log("i am inside the child", process.argv);
+} else {
+  var child = spawn(process.execPath, [__filename, "child"], {
+    stdio: "inherit"
+  });
+  // child.stdout.pipe(process.stdout);
+  /* child.stdout.on("data", function(data) {
+    console.log("from child", data.toString());
+  }); */
+}
+```
