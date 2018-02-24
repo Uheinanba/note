@@ -189,3 +189,102 @@ underscore 的memorize的缓存，作为键进行缓存，以内存空间换取C
 在解决缓存带来的内存泄露问题后，另外一个不经意产生内存泄露的则是队列。队列在消费者-生产者模型中经常充当中间产物。这是一个非常容易忽略情况，因为大多数场景消费速度大于生产速度，内存泄露不易产生。但是一旦消费速度大于生产速度，将形成堆积。
 
 例子：有的应用会收集，如果欠缺考虑，也许采用数据库来纪录日志。日志通常是海量的，数据库构建在文件系统之上，写入效率远低于文件的写入于是会形成数据库写入操作堆积，而js中相关的作用域也不会得到释放，内存占用不会回落，从而出现内存泄露。
+
+
+
+### 理解Buffer
+js对于字符串的操作十分友好，无论是宽字节字符串还是单字节字符串，都被认为是一个字符串。
+文件和网络的UI对于前端开发者都是不曾有的应用场景，因为前端只需要做一些简单的字符串操作或者DOM操作就能满足业务需求，在ECMAScript规范中，也没有对哲学方面做任何的定义，只有Commonjs中部分二进制的定义。由于应用场景不同，在Node中，应用需要处理网络协议，操作数据库，处理图片，接收上传文件等，在网络流和文件操作中，还需要处理大量的二进制的数据。Js自有的字符串远远不能满足这些需求，于是Buffer对象产生。
+1. Buffer结构
+Buffer是一个像Array的对象，但它主要用于操作字节。
+1.1 模块结构
+Buffer是一个典型的JS和C++结合的模块。它的性能相关部分用C++ 实现，将非性能部分使用JS实现。
+前端揭示了Buffer所占的内存不是通过V8 分配的，属于堆外内存，由于V8垃圾回收性能的影响，将常用的操作对象用更高效和专有的内存分配回收策略来管理是个很好的思路。
+由于Buffer太过于常见，Node在进程启动的时就已经加载了它，并将其放在全局对象上，所以在使用Buffer时，无需通过require()即可使用。
+1.2 Buffer对象
+Buffer对象类似于数组，它的元素为16进制的两位数，即0到255的树值。
+```
+var str = '深入浅出Nodejs'
+var buf = new Buffer(str, 'utf-8');
+```
+不同编码的字符串占用的元素个数不相同，上面代码文字在utf8编码占用3个元素，字母和半角标点符号占用1个元素。
+Buffer受Array的影响很大，可以访问length属性得到长度，也可以通过访问元素，在构造对象时也相似。
+var buf = new Buffer(100);
+得到的buf元素值是一个0到255之间的整数值。如果给元素的赋值如果小于0，就将该值逐次加256,直到得到一个0到255之间整数。
+1.3 Buffer内存分配
+Buffer对象内存分配不是在V8堆内存中，而是在Node的C++层面实现内存申请的。因为处理大量字节数据不能采用需要一点内存就向操作系统申请一点内存方式，可能造成大量的内存申请的系统调用。对操作系统有一定的压力。为此Node在内存的使用上应用是在C++层面申请内存，在JS中分配内存的策略。
+为例更加高效的使用申请来的内存，Node采用slab分配的机制。slab是一种动态内存管理机制，最早诞生于sumOS中。目前在一些*nix操作系统中，广泛使用，如freeBSD和linux。
+简单而言slab就是一块申请好的固定大小内存区域，具有三种状态：
+* full:完全分配状态
+* partial: 部分分配状态
+* empty: 没有被分配状态
+当我们需要一个Buffer对象时，可以通过new Buffer(size)方式分配指定大小的Buffer对象
+Node以8KB为界限区分Buffer是大对象还是小对象: Buffer.poolSize = 8 * 1024;
+这个8KB值就是每个slab的大小值，在JS层面，以它为单元进行内存的分配。
+- 分配小的Buffer对象
+如果小于8KB，Node会按照小对象的方式进行分配。Buffer的分配过程中主要使用一个局部变量pool作为中间处理对象, 处于分配状态的slab单元都指向它
+```
+var pool;
+function allocPool() {
+  pool = new SlowBuffer(Buffer.poolSize);
+  pool.used = 0;
+}
+```
+当再次创建一个Buffer对象时，构造过程中将会判断这个slab剩余空间是否足够。如果足够使用剩余空间，并更新slab分配状态。
+
+- 分配大的Buffer对象
+如果需要超过8KB的Buffer对象，将会直接分配一个SlowBuffer对象组委Slab单元，这个单元将会被这个大的Buffer对象独占。
+这个SlowBuffer类是在C++中定义的，虽然引用Buffer模块可以访问它，但是不推荐直接操作它，而是用Buffer替代。
+上面提到的Buffer对象都是js层面的，能够被V8的垃圾回收标记回收，但是内部的parent属性指向SlowBuffer对象却来自于Node的C++定义。是C++ 层面的Buffer对象。所用内存不在V8堆中。
+- 小结
+以8KB为界限，进行小而频繁的Buffer操作时，采用slab机制预先申请和事后分配，使得js到操作系统之间不必有过多的内存申请方面的系统调用
+对于大块Buffer，直接使用C+层面提供的内存，无需细腻分配操作
+
+2. Buffer的转换
+Buffer对象可以与字符串之间相互转换。目前支持字符串编码类型有几种。
+* ASCII
+* UTF-8
+* UTF-16LE
+* Base64
+* Binary
+* Hex
+2.1. 字符串转Buffer
+字符串转Buffer对象主要通过构造函数完成
+new Buffer(str, [encoding]);
+通过构造函数转换的Buffer对象，存储的只能是一种编码类型。encoding参数不传递时候，默认按Utf-8编码进行转换和存储。
+一个Buffer对象可以存储不同的编码类型的字符串转码的值，调用write()方法可以实现该目的。
+buf.write(streing,[offset],[length],[encoding])
+由于可以不断写入内容到Buffer对象中，并且每次写入可以指定编码，所以Buffer对象可以存在很多编码转化后的内容。需要小心的是，每种编码所用字节长度的不同，将Buffer反转回字符串需要谨慎处理。
+
+2.2 Buffer转字符串
+buf.toString([encoding],[start],[end])
+比较精巧的是，可以设置encoding(默认为utf-8),start,end这三个参数实现整体或局部的转换，如果Buffer对象由多种编码写入，就需要在局部指定不同的编码，才能转换回正常的编码。
+
+2.3 Buffer不支持的编码类型
+比较遗憾的是Node的Buffer对象支持编码类型有限，只有少数的几种编码类型可以在字符串和Buffer之间转换。为此Buffer提供了一个isEncoding()函数来判断编码是否支持转换：Buffer.isEncoding(encoding)
+将编码类型作为参数传入上面的参数，如果支持转换返回值为true,否则为false。很遗憾中国常用的GBK，GB2312，BIG-5等编码不知支持行列中。
+对于不支持的编码类型转换，可以借助Node生态圈中模块完成转换，iconv和iconv=lite两个模块可以支持更多的编码类型转换。
+
+3. Buffer的拼接
+Buffer在使用场景上，通常是一段一段的方式传输。 
+```
+var fs = require('fs');
+var rs = fs.createReadStream('test.md');
+var data = '';
+rs.on('data', function(thunk) {
+  data += thunk;
+});
+rs.on('end', function() {
+  console.log(data);
+})
+```
+data事件中获取 thunk对象即是 Buffer对象。对于初学者而言，容易将Buffer当作字符串来理解，所以在接受上面例子时不会觉得有任何异常。
+一旦输入流有宽字节编码时，问题就会暴露，如果你在通过Node开发网站上看到乱码符号，那么问题起源多半来自这里
+data += thunk;
+这段代码隐藏了 tostirng 操作,等价于 data = data.toString() + thunk.toStirng();
+在英文环境中 toString()不会造成任何问题，对于宽字节的中文却会形成问题。
+3.1 乱码如何产生
+文件可读流在读取时会逐个读取Buffer。
+buf.toString()方法默认为 utf-8编码，中文字在utf-8占3个字节，所以第一个buffer 对象在输出时只能显示3个字符。
+
+3.2 setEncoding和string_decoder()
