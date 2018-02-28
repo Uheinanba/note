@@ -107,4 +107,152 @@ const todo$ = changeActions$
 
 ### 两种组件状态管理的思路
 蚂群：依赖于强大的主控，个体弱小
+- 切状态外置，组件不管理自己状态，比较理想化
+优势： 整个应用的状态可预测
+劣势： 抽象成本高,不必要的数据进入全局,让store变得非常复杂。如果作为组件库提供给第三方的存在,则无法复用。
 
+人群：个体自主权较大
+部分内置，让组件自己管理，另外一些由全局store管理，现实的妥协。
+优势：土洋结合，容易开发
+劣势：部分状态不受控，热替换存在缺陷
+
+redux 作者说 local State is Fine
+组件对状态的管理:
+```
+constuctor(props) {
+    super(props);
+    this.state = {b:1}
+}
+render(props) {
+    const a = this.state.b = props.c;
+    return (<div>{a}</div>);
+}
+```
+渲染的时候b来自组件自己的状态，c来自组件外部的状态。这样的就破坏了render本身的纯洁性。
+
+###  如何结合内外的状态
+```
+const mapStateToProps = (state: {a}) => {
+    return {a}
+}
+const localState = {b:1};
+const mapLocalStateToProps = localState => localState;
+
+const ComponentA = (props) => {
+    const {a, b} = props;
+    const c = a+ b;
+    return (<div> {c} </div>)
+}
+return connect(mapStateToProps, mapLocalStateToProps)(ComponentA);
+```
+redux 的问题？
+
+### MVI
+1. 理念
+- 一切都是事件源
+- 使用Reactive的理念构建程序的骨架
+- 使用sink定义应用逻辑
+- 使用driver隔离有副作用的行为(网络请求,DOM渲染)
+2. 全局状态和本地状态
+MVI的优势在于提供了一种清晰的处理过程，把组件之外的全局状态和组件内部融合在一起:
+```
+state$ = xs.combine(
+    props,
+    localState$
+)
+```
+这样的组件部分可以纯化，并且组件内部逻辑和展示部分距离很近。
+
+### 分形
+每个组件对全局部分有依赖,可能要修改外部状态。如果每个组件天然分成对外处理和对内处理。
+
+### Redux的单Store
+全局有一个大的State对象用于描述状态：
+* 某个reducer修改了state的某个分支
+* combineReducer把修改结果合并到state上
+* react-redux拿到新的state去更新视图。
+reducer在修改数据的时候，是精确知道修改了state上哪些数据,但被combineReducer合并结束之后，就不清楚了,只是知道整个state改变了。
+之后还要选出更新的那部分来做视图渲染,不然就有很多无效的状态。所以有reselect这样的方案。
+
+### 合并之后统一reduce
+先把这些action全部merge之后在fold，和redux 理念一致
+```
+const actions = xs.merge(
+    addActions$,
+    updateActions$,
+    deleteActions$
+)
+const localState$ = actions.fold((state, action) => {
+    switch(action.type) {
+    case 'addTodo':
+        return addTodo(state, action)
+    case 'updateTodo':
+        return updateTodo(state, action)
+    case 'deleteTodo':
+        return deleteTodo(state, action)
+    }
+}, initState)
+```
+
+### 先单独reduce再合并
+```
+// 如果数据没有相关性，可以分别reduce之后在合并
+const a$ = actionA$.fold(reducerA, initA);
+const b$ = actionB$.fold(reducerB, initB);
+const c$ = actionC$.fold(reducerC, initC);
+const state$ = xs.combine(a$, b$, c$)
+    .map(([a,b,c]) => ({a,b,c}));
+// 如果足够简单可以省去action
+const state$ = xs.fromEvent($('.btn'), 'click')
+    .map(e => e.data);
+```
+数据来源全局部分和本地部分。本地部分比较简单，没有必要和全局使用同样方式使用action来定义。
+
+
+### 按照模型分类的数据流
+```
+// 按照业务模型组合的reducer
+const projectModel$ = xs
+.combine(addProjectReducer$, editProjectReducer$)
+const articleModel$ = xs
+.combine(addArticleReducer$, editActicleReducer$)
+// 修改整个state的reducer
+const state$ = xs
+.combine(projectModel$, articleModel$)
+```
+
+### state里如何存储数据
+- 按照原始数据存储
+    试图使用时常常要做转换
+- 按照视图形式存储
+    * 存储时可能会出现冗余
+    * (因为冗余)容易出现不一致
+- 如果兼而有之
+    * 同步是个大问题
+
+### 数据加工的可选位置
+Action -->  [Reducer -> Normalizr(可选)] -> state -> [VM(可选) --> View]
+
+### 可复用的数据和计算过程
+```
+const list$ = xs.from(arr)
+const tree$ = list$.map(listToTree)
+list$.subscribe(/* 以列表形式展示 */)
+tree$.subscribe(/* 以树的形状展示 */)
+```
+可以同时具有不同的形态数据管道，只需要控制好它们的转换关系
+
+### 分离对State的读写
+对State的读写操作实际上是分离的:
+* 通过action负责写入
+* 通过模型数据管道组合订阅来读取
+
+在此基础上,可以继续深入:
+* 写入操作原子化
+* 读取操作响应化
+* 与持久存储结合
+* 需要控制好时序关系(重要)
+
+### 小结
+* 不需要显示定义整个应用的state结构ß
+* 
