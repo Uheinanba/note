@@ -1,13 +1,20 @@
-setImmediate(() => {
-    console.log('setImmediate1')
-    setImmediate(() => {
-      console.log('setImmediate2')
-    })
-    process.nextTick(() => {
-      console.log('nextTick')
-    })
-  })
-  
-  setImmediate(() => {
-    console.log('setImmediate3')
-  })
+var ds = () => {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            reject('ERRORS');
+        }, 10)
+    });
+}
+
+var demo = async function() {
+    try {
+        var aa = await ds().then(() => {
+            return new Error('error!!!')
+          })
+        console.log(aa)
+    } catch (error) {
+        console.log(error);        
+    }
+}
+
+demo();
