@@ -1,4 +1,5 @@
 // https://tech.youzan.com/mobx_vs_redux/
+// https://segmentfault.com/a/1190000010084073#articleHeader5
 
 ### 理念和概况
 MST是一个状态容器，它将可变数据的简单性和易用性与不可变数据的可追踪性以及可观察数据的反应性和性能相结合。
