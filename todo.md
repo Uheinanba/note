@@ -10,3 +10,7 @@ https://juejin.im/post/59881640f265da3e154b0509
 3. node 事件模型,无阻塞。
 
 4. vue v-if v-else区别(重要)
+
+
+5. babel 学习
+babel转义
