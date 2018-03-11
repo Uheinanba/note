@@ -6,9 +6,6 @@
 
 // https://nodejs.org/en/docs/guides/event-loop-timers-and-nexttick/
 
-- 错误观点:
-event loop 在用户代码中的一个单独的线程中运行，有一个主线程,用户的javscript代码在上面运行，另外一个线程运行着event loop。每次异步操作发生时，主线程都会将工作交给事件循环，一旦完成，事件循环线程就会回到主线程执行callback。
-
 - 反应器模式
 Node工作在事件驱动的模型中，该模型涉及到事件分离器(Event Demultiplexer)和事件队列(Event Queue)。在Node中,所有的IO请求最终会产生一个完成或者失败的状态，或其他触发动作，这些都被抽象为“事件”。这个抽象如下:
 * 事件分离器接受IO请求，并将这些请求代理到相对应的请求处理器。

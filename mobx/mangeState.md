@@ -8,6 +8,7 @@ const appState = observable({
 appState.increment = function() {
     this.counter ++; 
 }
+
 // observer 观察者
 @observer class Counter extends Component {
     render() {
